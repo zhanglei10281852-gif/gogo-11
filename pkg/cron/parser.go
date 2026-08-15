@@ -217,19 +217,24 @@ func (s *Schedule) Matches(t time.Time) bool {
 	if !s.Minute.Contains(t.Minute()) {
 		return false
 	}
+	return s.dayMatches(t)
+}
 
+// dayMatches encodes the cron day-of-month / day-of-week rule: when both
+// fields are restricted a day matches if EITHER matches (OR semantics); when
+// only one is restricted that one decides; when neither is restricted every
+// day matches. Shared by Matches and nextFrom so the two cannot diverge.
+func (s *Schedule) dayMatches(t time.Time) bool {
 	domSet, dowSet := s.dayMatchEnabled()
+	if !domSet && !dowSet {
+		return true
+	}
 	domOK := s.DayOfMonth.Contains(t.Day())
-	dowOK := s.DayOfWeek.Contains(int(t.Weekday()))
-
 	if domSet && dowSet {
-		return domOK || dowOK
+		return domOK || s.DayOfWeek.Contains(int(t.Weekday()))
 	}
 	if domSet {
 		return domOK
 	}
-	if dowSet {
-		return dowOK
-	}
-	return domOK
+	return s.DayOfWeek.Contains(int(t.Weekday()))
 }
